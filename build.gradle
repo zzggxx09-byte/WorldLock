@@ -49,7 +49,7 @@ dependencies {
     minecraft 'net.minecraftforge:forge:1.12.2-14.23.5.2859'
 }
 
-procprocessResources {
+processResources {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     inputs.property "version", project.version
