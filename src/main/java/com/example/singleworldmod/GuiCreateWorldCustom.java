@@ -91,7 +91,7 @@ public class GuiCreateWorldCustom extends GuiScreen {
         this.statusMessage = "Створення світу...";
 
         try {
-            WorldTemplateUtils.extractTemplateWorld(targetDir);
+            WorldTemplateUtils.copyTemplateWorld(this.mc.mcDataDir, targetDir);
             WorldTemplateUtils.setLevelName(targetDir, rawName);
 
             this.mc.launchIntegratedServer(targetDir.getName(), rawName, null);
@@ -99,7 +99,7 @@ public class GuiCreateWorldCustom extends GuiScreen {
             e.printStackTrace();
             this.working = false;
             this.createButton.enabled = true;
-            this.statusMessage = "Помилка створення світу: " + e.getMessage();
+            this.statusMessage = "Помилка: " + e.getMessage();
         }
     }
 
