@@ -1,0 +1,15 @@
+[
+  {
+    "modid": "singleworldmod",
+    "name": "Single World Mod",
+    "description": "Замінює екран створення світу на спрощений: замість генерації нового світу розпаковує готовий світ-шаблон з ресурсів мода.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "authorList": ["you"],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]
