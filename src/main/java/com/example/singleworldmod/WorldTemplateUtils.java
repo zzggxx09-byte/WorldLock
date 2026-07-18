@@ -4,55 +4,68 @@ import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 
 import java.io.*;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.nio.file.Files;
 
 public class WorldTemplateUtils {
 
-    private static final String TEMPLATE_RESOURCE_PATH = "/assets/singleworldmod/template_world.zip";
+    /** Назва папки поруч із .minecraft, куди гравець кидає свою карту напряму. */
+    private static final String TEMPLATE_FOLDER_NAME = "singleworldmod_template";
 
-    public static void extractTemplateWorld(File targetDir) throws IOException {
-        if (!targetDir.exists() && !targetDir.mkdirs()) {
-            throw new IOException("Не вдалося створити папку: " + targetDir.getAbsolutePath());
+    /** Повертає папку .minecraft/singleworldmod_template (створює її, якщо нема). */
+    public static File getTemplateFolder(File mcDataDir) {
+        File dir = new File(mcDataDir, TEMPLATE_FOLDER_NAME);
+        if (!dir.exists()) {
+            dir.mkdirs();
+            writeReadme(dir);
         }
+        return dir;
+    }
 
-        try (InputStream in = WorldTemplateUtils.class.getResourceAsStream(TEMPLATE_RESOURCE_PATH)) {
-            if (in == null) {
-                throw new IOException("Не знайдено template_world.zip в ресурсах мода. " +
-                        "Поклади архів свого світу у src/main/resources/assets/singleworldmod/template_world.zip");
-            }
+    private static void writeReadme(File dir) {
+        File readme = new File(dir, "СЮДИ_КИДАЙ_СВІЙ_СВІТ.txt");
+        try (FileWriter fw = new FileWriter(readme)) {
+            fw.write("Кидай сюди файли своєї карти НАПРЯМУ (без zip):\n" +
+                    "level.dat, region/, playerdata/, DIM-1/, DIM1/, data/ і т.д.\n" +
+                    "Тобто вміст папки світу, а не саму папку.\n");
+        } catch (IOException ignored) {
+        }
+    }
 
-            try (ZipInputStream zis = new ZipInputStream(in)) {
-                ZipEntry entry;
-                byte[] buffer = new byte[8192];
-                while ((entry = zis.getNextEntry()) != null) {
-                    File outFile = new File(targetDir, entry.getName());
+    /** Чи є у папці шаблону хоча б level.dat (тобто карта реально покладена). */
+    public static boolean isTemplateReady(File mcDataDir) {
+        File dir = getTemplateFolder(mcDataDir);
+        return new File(dir, "level.dat").exists();
+    }
 
-                    if (!outFile.getCanonicalPath().startsWith(targetDir.getCanonicalPath() + File.separator)
-                            && !outFile.getCanonicalPath().equals(targetDir.getCanonicalPath())) {
-                        throw new IOException("Небезпечний шлях в архіві: " + entry.getName());
-                    }
+    /** Копіює папку-шаблон світу в нову папку в saves/. */
+    public static void copyTemplateWorld(File mcDataDir, File targetDir) throws IOException {
+        File templateDir = getTemplateFolder(mcDataDir);
+        if (!new File(templateDir, "level.dat").exists()) {
+            throw new IOException("У папці " + templateDir.getAbsolutePath() +
+                    " немає level.dat. Поклади туди файли своєї карти.");
+        }
+        copyRecursively(templateDir.toPath(), targetDir.toPath());
+    }
 
-                    if (entry.isDirectory()) {
-                        outFile.mkdirs();
-                        continue;
-                    }
-
-                    File parent = outFile.getParentFile();
-                    if (parent != null && !parent.exists()) {
-                        parent.mkdirs();
-                    }
-
-                    try (FileOutputStream fos = new FileOutputStream(outFile)) {
-                        int len;
-                        while ((len = zis.read(buffer)) > 0) {
-                            fos.write(buffer, 0, len);
-                        }
-                    }
-                    zis.closeEntry();
+    private static void copyRecursively(java.nio.file.Path source, java.nio.file.Path target) throws IOException {
+        Files.walk(source).forEach(path -> {
+            try {
+                java.nio.file.Path rel = source.relativize(path);
+                java.nio.file.Path destPath = target.resolve(rel.toString());
+                // Пропускаємо наш README
+                if (path.getFileName().toString().equals("СЮДИ_КИДАЙ_СВІЙ_СВІТ.txt")) {
+                    return;
                 }
+                if (Files.isDirectory(path)) {
+                    Files.createDirectories(destPath);
+                } else {
+                    Files.createDirectories(destPath.getParent());
+                    Files.copy(path, destPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-        }
+        });
     }
 
     public static void setLevelName(File worldDir, String newName) throws IOException {
